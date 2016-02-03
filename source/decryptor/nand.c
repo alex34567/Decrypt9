@@ -285,7 +285,7 @@ u32 CtrNandPadgen(u32 param)
     u32 nand_size;
 
     // legacy sizes & offset, to work with 3DSFAT16Tool
-    if (GetUnitPlatform() == PLATFORM_3DS) {
+    if (GetUnitPlatform() == PLATFORM_3DS || param == 1) {
         keyslot = 0x4;
         nand_size = 758;
     } else {
@@ -294,7 +294,6 @@ u32 CtrNandPadgen(u32 param)
     }
 
     Debug("Creating NAND FAT16 xorpad. Size (MB): %u", nand_size);
-    Debug("Filename: nand.fat16.xorpad");
 
     PadInfo padInfo = {
         .keyslot = keyslot,
@@ -303,6 +302,9 @@ u32 CtrNandPadgen(u32 param)
         .filename = "nand.fat16.xorpad",
         .mode = AES_CNT_CTRNAND_MODE
     };
+    if(param == 1)
+        memcpy(padInfo.filename, "oldnand.fat16.xorpad", sizeof("oldnand.fat16.xorpad"));
+    Debug("Filename: %s", padInfo.filename);
     if(GetNandCtr(padInfo.ctr, 0xB930000) != 0)
         return 1;
 

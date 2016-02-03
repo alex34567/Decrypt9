@@ -34,7 +34,7 @@ MenuInfo menu[] =
         }
     },
     {
-        "SysNAND Options", 8,
+        "SysNAND Options", 9,
         {
             { "NAND Backup",                  &DumpNand,              0 },
             { "NAND Restore",                 &RestoreNand,           N_NANDWRITE },
@@ -43,7 +43,8 @@ MenuInfo menu[] =
             { "File Dump...",                 NULL,                   SUBMENU_START + 4 },
             { "File Inject...",               NULL,                   SUBMENU_START + 6 },
             { "Health&Safety Dump",           &DumpHealthAndSafety,   0 },
-            { "Health&Safety Inject",         &InjectHealthAndSafety, N_NANDWRITE }
+            { "Health&Safety Inject",         &InjectHealthAndSafety, N_NANDWRITE },
+            { "NCSD Dump",                    &NCSDump,               0 }
         }
     },
     {

@@ -56,3 +56,4 @@ u32 DumpNand(u32 param);
 u32 RestoreNand(u32 param);
 u32 DecryptNandPartition(u32 param);
 u32 InjectNandPartition(u32 param);
+u32 NCSDump(u32 param);

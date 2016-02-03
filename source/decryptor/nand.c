@@ -645,3 +645,14 @@ u32 InjectNandPartition(u32 param)
     
     return EncryptFileToNand(filename, p_info->offset, p_info->size, p_info);
 }
+
+u32 NCSDump(u32 param)
+{
+    u8* buffer = BUFFER_ADDRESS;
+    sdmmc_nand_readsectors(0, 1, buffer);
+    if (!DebugFileCreate("ncsd.bin", true))
+        return 1;
+    if(!DebugFileWrite(buffer, NAND_SECTOR_SIZE, 0))
+        return 1;
+    return 0;
+}

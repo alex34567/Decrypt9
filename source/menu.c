@@ -182,7 +182,7 @@ u32 ProcessEntry(MenuEntry* entry)
     #ifdef USE_THEME
     LoadThemeGfx((res == 0) ? GFX_DONE : GFX_FAILED, false);
     #endif
-    while(!((pad_state = InputWait()) & (BUTTON_B | BUTTON_START))) {
+    /* while(!((pad_state = InputWait()) & (BUTTON_B | BUTTON_START))) {
         if (pad_state & BUTTON_X) Screenshot(NULL);
         #ifdef LOG_FILE
         else if (pad_state & BUTTON_UP) {
@@ -191,7 +191,8 @@ u32 ProcessEntry(MenuEntry* entry)
         }
         #endif
     }
-    
+    */
+    PowerOff();
     // returns the last known pad_state
     return pad_state;
 }

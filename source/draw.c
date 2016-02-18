@@ -136,6 +136,7 @@ void DebugClear()
     LoadThemeGfx(GFX_DEBUG_BG, true);
     #endif
     LogWrite("");
+    LogWrite(NULL);
 }
 
 void DebugSet(const char **strs)
@@ -182,6 +183,7 @@ void Debug(const char *format, ...)
     DebugSet(NULL);
 }
 
+#if !defined(USE_THEME) || !defined(ALT_PROGRESS)
 void ShowProgress(u64 current, u64 total)
 {
     const u32 progX = SCREEN_WIDTH_TOP - 40;
@@ -197,3 +199,4 @@ void ShowProgress(u64 current, u64 total)
         DrawString(TOP_SCREEN1, "    ", progX, progY, DBG_COLOR_FONT, DBG_COLOR_BG);
     }
 }
+#endif

@@ -295,9 +295,11 @@ size_t LogWrite(const char* text)
     if (bytes_written != tlen) return 0;
     f_write(&lfile, &newline, 1, &bytes_written);
     if (bytes_written != 1) return 0;
-    #endif
     
     return f_size(&lfile); // return the current position
+    #else
+    return 0;
+    #endif
 }
 
 static uint64_t ClustersToBytes(FATFS* fs, DWORD clusters)

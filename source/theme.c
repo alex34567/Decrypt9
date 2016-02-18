@@ -38,7 +38,7 @@ void LoadThemeGfxLogo(void) {
     LoadThemeGfx(GFX_LOGO, LOGO_TOP);
     #if defined LOGO_TEXT_X && defined LOGO_TEXT_Y
     u32 emunand_state = CheckEmuNand();
-    DrawStringF(LOGO_TEXT_X, LOGO_TEXT_Y -  0, LOGO_TOP, "SD card: %lluMB/%lluMB & %s", RemainingStorageSpace() / 1024 / 1024, TotalStorageSpace() / 1024 / 1024, (emunand_state == EMUNAND_READY) ? "EmuNAND ready" : (emunand_state == EMUNAND_GATEWAY) ? "GW EmuNAND" : (emunand_state == EMUNAND_REDNAND) ? "RedNAND" : "no EmuNAND");
+    DrawStringF(LOGO_TEXT_X, LOGO_TEXT_Y -  0, LOGO_TOP, "SD card: %lluMB/%lluMB & %s", RemainingStorageSpace() / 1024 / 1024, TotalStorageSpace() / 1024 / 1024, (emunand_state == EMUNAND_READY) ? "EmuNAND ready" : (emunand_state == EMUNAND_GATEWAY) ? "GW EmuNAND" : (emunand_state == EMUNAND_REDNAND) ? "RedNAND" : (emunand_state > 3) ? "MultiNAND" : "no EmuNAND");
     DrawStringF(LOGO_TEXT_X, LOGO_TEXT_Y - 10, LOGO_TOP, "Game directory: %s", GAME_DIR);
     #ifdef WORK_DIR
     if (DirOpen(WORK_DIR)) {
@@ -48,4 +48,21 @@ void LoadThemeGfxLogo(void) {
     #endif
     #endif
 }
+
+#ifdef ALT_PROGRESS
+void ShowProgress(u64 current, u64 total) {
+    const u32 nSymbols = PRG_BARWIDTH / 8;
+    char progStr[nSymbols + 1];
+    
+    memset(progStr, (int) ' ', nSymbols);
+    if (total > 0) {
+        for (u32 s = 0; s < ((nSymbols * current) / total); s++)
+            progStr[s] = '\xDB';
+    }
+    progStr[nSymbols] = '\0';
+    
+    DrawString(BOT_SCREEN0, progStr, PRG_START_X, PRG_START_Y, PRG_COLOR_FONT, PRG_COLOR_BG);
+    DrawString(BOT_SCREEN1, progStr, PRG_START_X, PRG_START_Y, PRG_COLOR_FONT, PRG_COLOR_BG);
+}
+#endif
 #endif

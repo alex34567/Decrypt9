@@ -26,30 +26,66 @@ u32 CheckEmuNand(void)
 {
     u8* buffer = BUFFER_ADDRESS;
     u32 nand_size_sectors = getMMCDevice(0)->total_size;
-    
-    // check the MBR for presence of EmuNAND
+    u32 multi_sectors = (GetUnitPlatform() == PLATFORM_3DS) ? EMUNAND_MULTI_OFFSET_O3DS : EMUNAND_MULTI_OFFSET_N3DS;
+    u32 ret = EMUNAND_NOT_READY;
+
+    // check the MBR for presence of a hidden partition
     sdmmc_sdcard_readsectors(0, 1, buffer);
-    if (nand_size_sectors > getle32(buffer + 0x1BE + 0x8))
-        return EMUNAND_NOT_READY;
+    u32 hidden_sectors = getle32(buffer + 0x1BE + 0x8);
     
-    // check for Gateway type EmuNAND
-    sdmmc_sdcard_readsectors(nand_size_sectors, 1, buffer);
-    if (memcmp(buffer + 0x100, "NCSD", 4) == 0)
-        return EMUNAND_GATEWAY;
+    for (u32 offset_sector = 0; offset_sector + nand_size_sectors < hidden_sectors; offset_sector += multi_sectors) {
+        // check for Gateway type EmuNAND
+        sdmmc_sdcard_readsectors(offset_sector + nand_size_sectors, 1, buffer);
+        if (memcmp(buffer + 0x100, "NCSD", 4) == 0) {
+            ret |= EMUNAND_GATEWAY << (2 * (offset_sector / multi_sectors)); 
+            continue;
+        }
+        // check for RedNAND type EmuNAND
+        sdmmc_sdcard_readsectors(offset_sector + 1, 1, buffer);
+        if (memcmp(buffer + 0x100, "NCSD", 4) == 0) {
+            ret |= EMUNAND_REDNAND << (2 * (offset_sector / multi_sectors)); 
+            continue;
+        }
+        // EmuNAND ready but not set up
+       ret |= EMUNAND_READY << (2 * (offset_sector / multi_sectors)); 
+    }
     
-    // check for RedNAND type EmuNAND
-    sdmmc_sdcard_readsectors(1, 1, buffer);
-    if (memcmp(buffer + 0x100, "NCSD", 4) == 0)
-        return EMUNAND_REDNAND;
-        
-    // EmuNAND ready but not set up
-    return EMUNAND_READY;
+    return ret;
 }
 
 u32 SetNand(bool set_emunand, bool force_emunand)
 {
     if (set_emunand) {
         u32 emunand_state = CheckEmuNand();
+        u32 emunand_count = 0;
+        u32 offset_sector = 0;
+        
+        for (emunand_count = 0; (emunand_state >> (2 * emunand_count)) & 0x3; emunand_count++);
+        if (emunand_count > 1) { // multiple EmuNANDs -> use selector
+            u32 multi_sectors = (GetUnitPlatform() == PLATFORM_3DS) ? EMUNAND_MULTI_OFFSET_O3DS : EMUNAND_MULTI_OFFSET_N3DS;
+            u32 emunand_no = 0;
+            Debug("Use arrow keys and <A> to choose EmuNAND");
+            while (true) {
+                u32 emunandn_state = (emunand_state >> (2 * emunand_no)) & 0x3;
+                offset_sector = emunand_no * multi_sectors;
+                Debug("\rEmuNAND #%u: %s", emunand_no, (emunandn_state == EMUNAND_READY) ? "EmuNAND ready" : (emunandn_state == EMUNAND_GATEWAY) ? "GW EmuNAND" : "RedNAND");
+                // user input routine
+                u32 pad_state = InputWait();
+                if (pad_state & BUTTON_DOWN) {
+                    emunand_no = (emunand_no + 1) % emunand_count;
+                } else if (pad_state & BUTTON_UP) {
+                    emunand_no = (emunand_no) ?  emunand_no - 1 : emunand_count - 1;
+                } else if (pad_state & BUTTON_A) {
+                    Debug("EmuNAND #%u", emunand_no);
+                    emunand_state = emunandn_state;
+                    break;
+                } else if (pad_state & BUTTON_B) {
+                    Debug("(cancelled by user)");
+                    return 2;
+                }
+            }
+        }
+        
         if ((emunand_state == EMUNAND_READY) && force_emunand)
             emunand_state = EMUNAND_GATEWAY;
         switch (emunand_state) {
@@ -57,13 +93,13 @@ u32 SetNand(bool set_emunand, bool force_emunand)
                 Debug("SD is not formatted for EmuNAND");
                 return 1;
             case EMUNAND_GATEWAY:
-                emunand_header = getMMCDevice(0)->total_size;
-                emunand_offset = 0;
+                emunand_header = offset_sector + getMMCDevice(0)->total_size;
+                emunand_offset = offset_sector;
                 Debug("Using EmuNAND @ %06X/%06X", emunand_header, emunand_offset);
                 return 0;
             case EMUNAND_REDNAND:
-                emunand_header = 1;
-                emunand_offset = 1;
+                emunand_header = offset_sector + 1;
+                emunand_offset = offset_sector + 1;
                 Debug("Using RedNAND @ %06X/%06X", emunand_header, emunand_offset);
                 return 0;
             default:
@@ -105,7 +141,7 @@ static inline int WriteNandSectors(u32 sector_no, u32 numsectors, u8 *in)
     } else return sdmmc_nand_writesectors(sector_no, numsectors, in);
 }
 
-u32 OutputFileNameSelector(char* filename, const char* basename, char* extension, bool emuname) {
+u32 OutputFileNameSelector(char* filename, const char* basename, char* extension) {
     char bases[3][64] = { 0 };
     char* dotpos = NULL;
     
@@ -120,11 +156,11 @@ u32 OutputFileNameSelector(char* filename, const char* basename, char* extension
     }
     
     // build other two base names
-    snprintf(bases[1], 63, "%s_%s", bases[0], (emuname) ? "emu" : "sys");
-    snprintf(bases[2], 63, "%s%s" , (emuname) ? "emu" : "sys", bases[0]);
+    snprintf(bases[1], 63, "%s_%s", bases[0], (emunand_header) ? "emu" : "sys");
+    snprintf(bases[2], 63, "%s%s" , (emunand_header) ? "emu" : "sys", bases[0]);
     
-    u32 fn_id = 0;
-    u32 fn_num = 0;
+    u32 fn_id = (emunand_header) ? 1 : 0;
+    u32 fn_num = (emunand_header) ? (emunand_offset / ((GetUnitPlatform() == PLATFORM_3DS) ? EMUNAND_MULTI_OFFSET_O3DS : EMUNAND_MULTI_OFFSET_N3DS)) : 0;
     bool exists = false;
     char extstr[16] = { 0 };
     if (extension)
@@ -142,7 +178,6 @@ u32 OutputFileNameSelector(char* filename, const char* basename, char* extension
         u32 pad_state = InputWait();
         if (pad_state & BUTTON_DOWN) { // increment filename id
             fn_id = (fn_id + 1) % 3;
-            fn_num = 0;
         } else if (pad_state & BUTTON_UP) { // decrement filename id
             fn_id = (fn_id > 0) ? fn_id - 1 : 2;
         } else if ((pad_state & BUTTON_RIGHT) && (fn_num < 9)) { // increment number
@@ -281,6 +316,7 @@ PartitionInfo* GetPartitionInfo(u32 partition_id)
 
 u32 CtrNandPadgen(u32 param)
 {
+    char* filename = (param & PG_FORCESLOT4) ? "nand.fat16.0x4.xorpad" : "nand.fat16.xorpad";
     u32 keyslot;
     u32 nand_size;
 
@@ -289,20 +325,20 @@ u32 CtrNandPadgen(u32 param)
         keyslot = 0x4;
         nand_size = 758;
     } else {
-        keyslot = 0x5;
+        keyslot = (param & PG_FORCESLOT4) ? 0x4 : 0x5;
         nand_size = 1055;
     }
 
     Debug("Creating NAND FAT16 xorpad. Size (MB): %u", nand_size);
-    Debug("Filename: nand.fat16.xorpad");
+    Debug("Filename: %s", filename);
 
     PadInfo padInfo = {
         .keyslot = keyslot,
         .setKeyY = 0,
         .size_mb = nand_size,
-        .filename = "nand.fat16.xorpad",
         .mode = AES_CNT_CTRNAND_MODE
     };
+    strncpy(padInfo.filename, filename, 64);
     if(GetNandCtr(padInfo.ctr, 0xB930000) != 0)
         return 1;
 
@@ -448,7 +484,7 @@ u32 DumpNand(u32 param)
 
     Debug("Dumping %sNAND. Size (MB): %u", (param & N_EMUNAND) ? "Emu" : "Sys", nand_size / (1024 * 1024));
     
-    if (OutputFileNameSelector(filename, "NAND.bin", NULL, param & N_EMUNAND) != 0)
+    if (OutputFileNameSelector(filename, "NAND.bin", NULL) != 0)
         return 1;
     if (!DebugFileCreate(filename, true))
         return 1;
@@ -494,7 +530,7 @@ u32 DecryptNandPartition(u32 param)
         Debug("Decryption error, please contact us");
         return 1;
     }
-    if (OutputFileNameSelector(filename, p_info->name, "bin", param & N_EMUNAND) != 0)
+    if (OutputFileNameSelector(filename, p_info->name, "bin") != 0)
         return 1;
     
     return DecryptNandToFile(filename, p_info->offset, p_info->size, p_info);

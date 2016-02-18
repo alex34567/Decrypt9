@@ -36,7 +36,8 @@ u32 ScrollOutput()
     
     // read lines
     logtext[log_size - 1] = '\0';
-    for (char* line = logtext; line != NULL && l_total < 4000; line = strchr(line, '\n')) {
+    logptr[l_total++] = logtext;
+    for (char* line = strchr(logtext, '\n'); line != NULL && l_total < 4000; line = strchr(line, '\n')) {
         *line = '\0';
         logptr[l_total++] = ++line; 
     }
@@ -105,7 +106,7 @@ void DrawMenu(MenuInfo* currMenu, u32 index, bool fullDraw, bool subMenu)
         DrawStringF(menublock_x0, menublock_y1 + 10, top_screen, (subMenu) ? "A: Choose  B: Return" : "A: Choose");
         DrawStringF(menublock_x0, menublock_y1 + 20, top_screen, "SELECT: Unmount SD");
         DrawStringF(menublock_x0, menublock_y1 + 30, top_screen, "START:  Reboot");
-        DrawStringF(menublock_x1, SCREEN_HEIGHT - 20, top_screen, "SD card: %lluMB/%lluMB & %s", RemainingStorageSpace() / 1024 / 1024, TotalStorageSpace() / 1024 / 1024, (emunand_state == EMUNAND_READY) ? "EmuNAND ready" : (emunand_state == EMUNAND_GATEWAY) ? "GW EmuNAND" : (emunand_state == EMUNAND_REDNAND) ? "RedNAND" : "no EmuNAND");
+        DrawStringF(menublock_x1, SCREEN_HEIGHT - 20, top_screen, "SD card: %lluMB/%lluMB & %s", RemainingStorageSpace() / 1024 / 1024, TotalStorageSpace() / 1024 / 1024, (emunand_state == EMUNAND_READY) ? "EmuNAND ready" : (emunand_state == EMUNAND_GATEWAY) ? "GW EmuNAND" : (emunand_state == EMUNAND_REDNAND) ? "RedNAND" : (emunand_state > 3) ? "MultiNAND" : "no EmuNAND");
         DrawStringF(menublock_x1, SCREEN_HEIGHT - 30, top_screen, "Game directory: %s", GAME_DIR);
         if (DirOpen(WORK_DIR)) {
             DrawStringF(menublock_x1, SCREEN_HEIGHT - 40, top_screen, "Work directory: %s", WORK_DIR);
@@ -214,7 +215,6 @@ void BatchScreenshot(MenuInfo* info, bool full_batch)
 
 u32 ProcessMenu(MenuInfo* info, u32 n_entries_main)
 {
-    MenuInfo mainMenu;
     MenuInfo* currMenu;
     MenuInfo* prevMenu[MENU_MAX_DEPTH];
     u32 prevIndex[MENU_MAX_DEPTH];
@@ -224,6 +224,7 @@ u32 ProcessMenu(MenuInfo* info, u32 n_entries_main)
     u32 result = MENU_EXIT_REBOOT;
     
     #ifndef USE_THEME
+    MenuInfo mainMenu;
     if (n_entries_main > 1) {
         // build main menu structure from submenus
         if (n_entries_main > MENU_MAX_ENTRIES) // limit number of entries

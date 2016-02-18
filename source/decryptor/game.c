@@ -209,6 +209,19 @@ u32 NcchPadgen(u32 param)
         Debug("7.x game decryption will fail on less than 7.x");
     }
 
+    if (DebugFileOpen("slot0x11key96.bin")) {
+        u8 slot0x11key96[16] = {0};
+        if (FileRead(&slot0x11key96, 16, 0) != 16) {
+            Debug("slot0x11key96.bin is corrupt!");
+            FileClose();
+            return 1;
+        }
+        FileClose();
+        setup_aeskey(0x11, slot0x11key96);
+    } else {
+        Debug("Secure4 crypto will fail");
+    }
+        
     if (DebugFileOpen("seeddb.bin")) {
         if (!DebugFileRead(seedinfo, 16, 0)) {
             FileClose();
@@ -310,16 +323,15 @@ u32 NcchPadgen(u32 param)
                 Debug("This can only be generated on N3DS");
                 return 1;
             }
-            padInfo.keyslot = 0x18;
+            padInfo.keyslot = 0x18; // Secure3 crypto
         } else if (info->entries[i].uses7xCrypto == 0xB) {
-            Debug("Secure4 xorpad cannot be generated yet");
-            return 1;
+            padInfo.keyslot = 0x11; // Secure4 crypto, needs slot0x11key96.bin
         } else if(info->entries[i].uses7xCrypto >> 8 == 0xDEC0DE) // magic value to manually specify keyslot
             padInfo.keyslot = info->entries[i].uses7xCrypto & 0x3F;
         else if (info->entries[i].uses7xCrypto)
-            padInfo.keyslot = 0x25;
+            padInfo.keyslot = 0x25; // 7.x crypto
         else
-            padInfo.keyslot = 0x2C;
+            padInfo.keyslot = 0x2C; // standard crypto
         Debug("Using keyslot: %02X", padInfo.keyslot);
         
         if (CreatePad(&padInfo) != 0)
@@ -455,14 +467,21 @@ u32 UpdateSeedDb(u32 param)
     // search and extract seeds
     for ( int n = 0; n < 2; n++ ) {
         // there are two offsets where seeds can be found - 0x07000 & 0x5C000
-        u8* seed_data = buffer + ((n == 0) ? 0x7000 : 0x5C000);
-        for ( size_t i = 0; i < 2000; i++ ) { 
+        static const int seed_offsets[2] = {0x7000, 0x5C000};
+        unsigned char* seed_data = buffer + seed_offsets[n];
+        for ( size_t i = 0; i < 2000; i++ ) {
+            static const u8 zeroes[16] = { 0x00 };
             // magic number is the reversed first 4 byte of a title id
             static const u8 magic[4] = { 0x00, 0x00, 0x04, 0x00 };
             // 2000 seed entries max, splitted into title id and seed area
             u8* titleId = seed_data + (i*8);
             u8* seed = seed_data + (2000*8) + (i*16);
             if (memcmp(titleId + 4, magic, 4) != 0)
+                continue;
+            // Bravely Second demo seed workaround
+            if (memcmp(seed, zeroes, 16) == 0)
+                seed = buffer + seed_offsets[(n+1)%2] + (2000 * 8) + (i*16);
+            if (memcmp(seed, zeroes, 16) == 0)
                 continue;
             // seed found, check if it already exists
             u32 entryPos = 0;
@@ -657,8 +676,19 @@ u32 CryptNcch(const char* filename, u32 offset, u32 size, u64 seedId, u8* encryp
     
     // check secure4 crypto
     if (usesSec4Crypto) {
-        Debug("Secure4 crypto is not supported!");
-        return 1;
+        Debug("Warning: Secure4 support is preliminary!");
+        if (FileOpen("slot0x11key96.bin")) {
+            u8 slot0x11key96[16] = {0};
+            if (FileRead(&slot0x11key96, 16, 0) != 16) {
+                Debug("slot0x11key96.bin is corrupt!");
+                FileClose();
+                return 1;
+            }
+            FileClose();
+            setup_aeskey(0x11, slot0x11key96);
+        } else {
+            return 1;
+        }
     }
     
     // check / setup 7x crypto
@@ -723,7 +753,7 @@ u32 CryptNcch(const char* filename, u32 offset, u32 size, u64 seedId, u8* encryp
     memcpy(info1.ctr, info0.ctr, 8);
     memcpy(info0.keyY, ncch->signature, 16);
     memcpy(info1.keyY, (usesSeedCrypto) ? seedKeyY : ncch->signature, 16);
-    info1.keyslot = (usesSec3Crypto) ? 0x18 : ((uses7xCrypto) ? 0x25 : 0x2C);
+    info1.keyslot = (usesSec4Crypto) ? 0x11 : ((usesSec3Crypto) ? 0x18 : ((uses7xCrypto) ? 0x25 : info0.keyslot));
     
     Debug("%s ExHdr/ExeFS/RomFS (%ukB/%ukB/%uMB)",
         (encrypt_flags) ? "Encrypt" : "Decrypt",
@@ -832,6 +862,21 @@ u32 CryptNcch(const char* filename, u32 offset, u32 size, u64 seedId, u8* encryp
             ver_exefs = CheckHashFromFile(filename, offset + (ncch->offset_exefs * 0x200), ncch->size_exefs_hash * 0x200, ncch->hash_exefs);
         if (ncch->size_romfs_hash > 0)
             ver_romfs = CheckHashFromFile(filename, offset + (ncch->offset_romfs * 0x200), ncch->size_romfs_hash * 0x200, ncch->hash_romfs);
+        
+        if (ncch->size_exefs > 0) { // thorough exefs verification
+            u32 offset_byte = ncch->offset_exefs * 0x200;
+            if(!FileOpen(filename) || !FileRead(buffer, 0x200, offset + offset_byte))
+                ver_exefs = 1;
+            FileClose();
+            for (u32 i = 0; (i < 10) && (ver_exefs != 1); i++) {
+                u32 offset_exefs_file = offset_byte + getle32(buffer + (i*0x10) + 0x8) + 0x200;
+                u32 size_exefs_file = getle32(buffer + (i*0x10) + 0xC);
+                u8* hash_exefs_file = buffer + 0x200 - ((i+1)*0x20);
+                if (size_exefs_file == 0)
+                    break;
+                ver_exefs = CheckHashFromFile(filename, offset + offset_exefs_file, size_exefs_file, hash_exefs_file);
+            }
+        }
         
         Debug("Verify ExHdr/ExeFS/RomFS: %s/%s/%s", status_str[ver_exthdr], status_str[ver_exefs], status_str[ver_romfs]);
         result = (((ver_exthdr | ver_exefs | ver_romfs) & 1) == 0) ? 0 : 1;

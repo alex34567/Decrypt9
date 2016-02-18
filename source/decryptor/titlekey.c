@@ -76,6 +76,7 @@ u32 DecryptTitlekeysNand(u32 param)
     PartitionInfo* ctrnand_info = GetPartitionInfo(P_CTRNAND);;
     u8* buffer = BUFFER_ADDRESS;
     EncKeysInfo *info = (EncKeysInfo*) 0x20316000;
+    char filename[64];
     
     u32 nKeys = 0;
     u32 offset = 0;
@@ -123,8 +124,11 @@ u32 DecryptTitlekeysNand(u32 param)
     
     Debug("Decrypted %u unique Title Keys", nKeys);
     
+    if (OutputFileNameSelector(filename, "decTitleKeys.bin", NULL) != 0)
+        return 1;
+    
     if(nKeys > 0) {
-        if (!DebugFileCreate((param & N_EMUNAND) ? "decTitleKeys_emu.bin" : "decTitleKeys.bin", true))
+        if (!DebugFileCreate(filename, true))
             return 1;
         if (!DebugFileWrite(info, 0x10 + nKeys * 0x20, 0)) {
             FileClose();

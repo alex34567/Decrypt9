@@ -133,7 +133,7 @@ u32 ProcessEntry(MenuEntry* entry)
     u32 res = 0;
     
     // unlock sequence for dangerous features
-    if (warning) {
+    /*if (warning) {
         u32 unlockSequenceEmu[] = { BUTTON_LEFT, BUTTON_RIGHT, BUTTON_DOWN, BUTTON_UP, BUTTON_A };
         u32 unlockSequenceSys[] = { BUTTON_LEFT, BUTTON_UP, BUTTON_RIGHT, BUTTON_UP, BUTTON_A };
         u32 unlockLvlMax = ((emunand) ? sizeof(unlockSequenceEmu) : sizeof(unlockSequenceSys)) / sizeof(u32);
@@ -169,7 +169,7 @@ u32 ProcessEntry(MenuEntry* entry)
         if (unlockLvl < unlockLvlMax)
             return pad_state;
     }
-    
+    */
     // execute this entries function
     #ifdef USE_THEME
     LoadThemeGfx(GFX_PROGRESS, false);

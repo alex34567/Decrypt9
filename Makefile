@@ -54,6 +54,8 @@ ifeq ($(EXEC_METHOD),GATEWAY)
 	LDFLAGS += --specs=../gateway.specs
 else ifeq ($(EXEC_METHOD),BOOTSTRAP)
 	LDFLAGS += --specs=../bootstrap.specs
+else ifeq ($(EXEC_METHOD),ARM9LDR)
+	LDFLAGS += --specs=../arm9ldr.specs
 endif
 
 LIBS	:=
@@ -145,6 +147,9 @@ brahma: submodules bootstrap
 	@make --no-print-directory -C BrahmaLoader APP_TITLE=$(TARGET)
 	@mv BrahmaLoader/output/*.3dsx $(OUTPUT_D)
 	@mv BrahmaLoader/output/*.smdh $(OUTPUT_D)
+
+arm9ldr: common
+	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile EXEC_METHOD=ARM9LDR
 	
 release:
 	@rm -fr $(BUILD) $(OUTPUT_D) $(RELEASE)

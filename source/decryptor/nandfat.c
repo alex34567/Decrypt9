@@ -288,7 +288,6 @@ u32 DumpHealthAndSafety(u32 param)
     u32 offset_tmd;
     u32 size_tmd;
     
-    
     if (DebugSeekTitleInNand(&offset_tmd, &size_tmd, offset_app, size_app, health, 4) != 0)
         return 1;
     if (OutputFileNameSelector(filename, "hs.app", NULL) != 0)

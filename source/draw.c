@@ -16,6 +16,7 @@
 
 static char debugstr[DBG_N_CHARS_X * DBG_N_CHARS_Y] = { 0 };
 
+#ifndef EXEC_ARM9LDR
 void ClearScreen(u8* screen, int width, int color)
 {
     if (color == COLOR_TRANSPARENT) color = COLOR_BLACK;
@@ -156,6 +157,41 @@ void DebugSet(const char **strs)
     }
 }
 
+#if !defined(USE_THEME) || !defined(ALT_PROGRESS)
+void ShowProgress(u64 current, u64 total)
+{
+    const u32 progX = SCREEN_WIDTH_TOP - 40;
+    const u32 progY = SCREEN_HEIGHT - 20;
+    
+    if (total > 0) {
+        char progStr[8];
+        snprintf(progStr, 8, "%3llu%%", (current * 100) / total);
+        DrawString(TOP_SCREEN0, progStr, progX, progY, DBG_COLOR_FONT, DBG_COLOR_BG);
+        DrawString(TOP_SCREEN1, progStr, progX, progY, DBG_COLOR_FONT, DBG_COLOR_BG);
+    } else {
+        DrawString(TOP_SCREEN0, "    ", progX, progY, DBG_COLOR_FONT, DBG_COLOR_BG);
+        DrawString(TOP_SCREEN1, "    ", progX, progY, DBG_COLOR_FONT, DBG_COLOR_BG);
+    }
+}
+#endif
+#else
+void ClearScreen(u8* screen, int width, int color) {}
+void ClearScreenFull(bool clear_top, bool clear_bottom) {}
+void DrawCharacter(u8* screen, int character, int x, int y, int color, int bgcolor) {}
+void DrawString(u8* screen, const char *str, int x, int y, int color, int bgcolor) {}
+void DrawStringF(int x, int y, bool use_top, const char *format, ...) {}
+void Screenshot(const char* path) {}
+void DebugClear() 
+{
+    memset(debugstr, 0x00, DBG_N_CHARS_X * DBG_N_CHARS_Y);
+    LogWrite("");
+    LogWrite(NULL);
+}
+void DebugSet(const char **strs) {}
+void ShowProgress(u64 current, u64 total) {}
+// Nullify all drawing functions in arm9loaderhax.
+#endif
+
 void Debug(const char *format, ...)
 {
     static bool adv_output = true;
@@ -182,21 +218,3 @@ void Debug(const char *format, ...)
     
     DebugSet(NULL);
 }
-
-#if !defined(USE_THEME) || !defined(ALT_PROGRESS)
-void ShowProgress(u64 current, u64 total)
-{
-    const u32 progX = SCREEN_WIDTH_TOP - 40;
-    const u32 progY = SCREEN_HEIGHT - 20;
-    
-    if (total > 0) {
-        char progStr[8];
-        snprintf(progStr, 8, "%3llu%%", (current * 100) / total);
-        DrawString(TOP_SCREEN0, progStr, progX, progY, DBG_COLOR_FONT, DBG_COLOR_BG);
-        DrawString(TOP_SCREEN1, progStr, progX, progY, DBG_COLOR_FONT, DBG_COLOR_BG);
-    } else {
-        DrawString(TOP_SCREEN0, "    ", progX, progY, DBG_COLOR_FONT, DBG_COLOR_BG);
-        DrawString(TOP_SCREEN1, "    ", progX, progY, DBG_COLOR_FONT, DBG_COLOR_BG);
-    }
-}
-#endif

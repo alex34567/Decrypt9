@@ -107,6 +107,7 @@ u32 SetNand(bool set_emunand, bool force_emunand)
                 return 1;
         }
     } else {
+        Debug("debug");
         emunand_header = 0;
         emunand_offset = 0;
         return 0;

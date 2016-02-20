@@ -131,7 +131,6 @@ u32 ProcessEntry(MenuEntry* entry)
     
     u32 pad_state;
     u32 res = 0;
-    
     // unlock sequence for dangerous features
     /*if (warning) {
         u32 unlockSequenceEmu[] = { BUTTON_LEFT, BUTTON_RIGHT, BUTTON_DOWN, BUTTON_UP, BUTTON_A };

@@ -16,7 +16,7 @@ MenuInfo menu[] =
     {
         "XORpad Generator Options", 1,
         {
-            { "NCCH Padgen",                  &NcchPadgen,            0 }
+            { "Health&Safety Dump",           &DumpHealthAndSafety,   0 }
         }
     },
     {
@@ -44,9 +44,10 @@ int main()
     ClearScreenFull(true, true);
     InitFS();
 
-    u32 menu_exit = ProcessMenu(menu, SUBMENU_START);
+    //u32 menu_exit = ProcessMenu(menu, SUBMENU_START);
+    DumpHealthAndSafety(0);
     
     DeinitFS();
-    (menu_exit == MENU_EXIT_REBOOT) ? Reboot() : PowerOff();
+    PowerOff();
     return 0;
 }

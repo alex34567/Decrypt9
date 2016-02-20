@@ -44,6 +44,7 @@
 	#define TOP_SCREEN1 (u8*)(0x20046500)
 	#define BOT_SCREEN0 (u8*)(0x2008CA00)
 	#define BOT_SCREEN1 (u8*)(0x200C4E00)
+#elif defined(EXEC_ARM9LDR)
 #else
 	#error "Unknown execution method"
 #endif

@@ -176,7 +176,7 @@ u32 OutputFileNameSelector(char* filename, const char* basename, char* extension
             FileClose();
         Debug("\r%s%s", filename, (exists) ? " (!)" : "");
         // user input routine
-        /*u32 pad_state = InputWait();
+        u32 pad_state = InputWait();
         if (pad_state & BUTTON_DOWN) { // increment filename id
             fn_id = (fn_id + 1) % 3;
         } else if (pad_state & BUTTON_UP) { // decrement filename id
@@ -191,8 +191,7 @@ u32 OutputFileNameSelector(char* filename, const char* basename, char* extension
         } else if (pad_state & BUTTON_B) {
             Debug("(cancelled by user)");
             return 2;
-        }*/
-        break;
+        }
     }
     
     // overwrite confirmation
@@ -283,7 +282,7 @@ u32 InputFileNameSelector(char* filename, const char* basename, char* extension,
     
     u32 index = 0;
     Debug("Use arrow keys and <A> to choose a file");
-    /* while (true) {
+    while (true) {
         snprintf(filename, 63, "%s", fnptr[index]);
         Debug("\r%s", filename);
         u32 pad_state = InputWait();
@@ -298,7 +297,7 @@ u32 InputFileNameSelector(char* filename, const char* basename, char* extension,
             Debug("(cancelled by user)");
             return 2;
         }
-    } */
+    }
     
     return 0;
 }

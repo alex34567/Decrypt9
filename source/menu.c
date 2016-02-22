@@ -259,8 +259,7 @@ u32 ProcessMenu(MenuInfo* info, u32 n_entries_main)
     // main processing loop
     while (true) {
         bool full_draw = true;
-        //u32 pad_state = InputWait();
-        u32 pad_state = BUTTON_A; // Automaticly start the first option
+        u32 pad_state = InputWait();
         if ((pad_state & BUTTON_A) && (currMenu->entries[index].function == NULL)) {
             if (menuLvl < MENU_MAX_DEPTH) {
                 prevMenu[menuLvl] = currMenu;
